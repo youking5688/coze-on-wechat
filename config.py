@@ -160,10 +160,10 @@ available_setting = {
     "linkai_api_key": "",
     "linkai_app_code": "",
     "linkai_api_base": "https://api.link-ai.chat",  # linkAI服务地址，若国内无法访问或延迟较高可改为 https://api.link-ai.tech
-  "model": "coze",
-  "coze_api_base": "https://api.coze.cn/open_api/v2",
-  "coze_api_key": "",
-  "coze_bot_id": "",
+    "model": "coze",
+    "coze_api_base": "https://api.coze.cn/open_api/v2",
+    "coze_api_key": "",
+    "coze_bot_id": "",
 }
 
 
