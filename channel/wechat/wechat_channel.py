@@ -9,7 +9,10 @@ import json
 import os
 import threading
 import time
+import re
+
 import requests
+import random
 
 from bridge.context import *
 from bridge.reply import *
@@ -20,7 +23,6 @@ from common.expired_dict import ExpiredDict
 from common.log import logger
 from common.singleton import singleton
 from common.time_check import time_checker
-from common.utils import convert_webp_to_png
 from config import conf, get_appdata_dir
 from lib import itchat
 from lib.itchat.content import *
@@ -109,7 +111,7 @@ class WechatChannel(ChatChannel):
 
     def __init__(self):
         super().__init__()
-        self.receivedMsgs = ExpiredDict(conf().get("expires_in_seconds", 3600))
+        self.receivedMsgs = ExpiredDict(conf().get("expires_in_seconds"))
         self.auto_login_times = 0
 
     def startup(self):
@@ -210,8 +212,20 @@ class WechatChannel(ChatChannel):
     def send(self, reply: Reply, context: Context):
         receiver = context["receiver"]
         if reply.type == ReplyType.TEXT:
-            itchat.send(reply.content, toUserName=receiver)
-            logger.info("[WX] sendMsg={}, receiver={}".format(reply, receiver))
+            split_punctuation = ['//n']
+        # 创建一个正则表达式模式，用来分割消息，确保正确处理 '||<'
+            pattern = '|'.join(map(lambda x: re.escape(x), split_punctuation))
+        # 使用正则表达式来分割消息
+            split_messages = re.split(pattern, reply.content)
+        # 移除空行
+            split_messages = [msg.strip() for msg in split_messages if msg.strip() != '']
+            
+            for msg in split_messages:
+            # 发送消息
+                    itchat.send(msg, toUserName=receiver)
+                    logger.info("[WX] sendMsg={}, receiver={}".format(msg, receiver))
+       #    itchat.send(reply.content, toUserName=receiver)
+    #    logger.info("[WX] sendMsg={}, receiver={}".format(reply, receiver))
         elif reply.type == ReplyType.ERROR or reply.type == ReplyType.INFO:
             itchat.send(reply.content, toUserName=receiver)
             logger.info("[WX] sendMsg={}, receiver={}".format(reply, receiver))
@@ -229,12 +243,6 @@ class WechatChannel(ChatChannel):
                 image_storage.write(block)
             logger.info(f"[WX] download image success, size={size}, img_url={img_url}")
             image_storage.seek(0)
-            if ".webp" in img_url:
-                try:
-                    image_storage = convert_webp_to_png(image_storage)
-                except Exception as e:
-                    logger.error(f"Failed to convert image: {e}")
-                    return
             itchat.send_image(image_storage, toUserName=receiver)
             logger.info("[WX] sendImage url={}, receiver={}".format(img_url, receiver))
         elif reply.type == ReplyType.IMAGE:  # 从文件读取图片
@@ -272,7 +280,6 @@ def _send_login_success():
     except Exception as e:
         pass
 
-
 def _send_logout():
     try:
         from common.linkai_client import chat_client
@@ -280,7 +287,6 @@ def _send_logout():
             chat_client.send_logout()
     except Exception as e:
         pass
-
 
 def _send_qr_code(qrcode_list: list):
     try:
@@ -290,3 +296,4 @@ def _send_qr_code(qrcode_list: list):
     except Exception as e:
         pass
 
+    
